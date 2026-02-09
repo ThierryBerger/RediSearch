@@ -472,6 +472,9 @@ static void sendChunk_Resp2(AREQ *req, RedisModule_Reply *reply, size_t limit,
 done_2:
     RedisModule_Reply_ArrayEnd(reply);    // </results>
 
+    // Assert that timeout only occurs when skipTimeoutChecks is false
+    RS_ASSERT(!(rc == RS_RESULT_TIMEDOUT) || !req->skipTimeoutChecks);
+
     cursor_done = (rc != RS_RESULT_OK
                    && !(rc == RS_RESULT_TIMEDOUT
                         && req->reqConfig.timeoutPolicy == TimeoutPolicy_Return));
@@ -545,6 +548,8 @@ static void _replyWarnings(AREQ *req, RedisModule_Reply *reply, int rc) {
     ProfileWarnings_Add(&profileCtx->warnings, PROFILE_WARNING_TYPE_QUERY_OOM);
   }
   if (rc == RS_RESULT_TIMEDOUT) {
+    // Assert that timeout only occurs when skipTimeoutChecks is false
+    RS_ASSERT(!req->skipTimeoutChecks);
     // Track warnings in global statistics
     QueryWarningsGlobalStats_UpdateWarning(QUERY_WARNING_CODE_TIMED_OUT, 1, !IsInternal(req));
     RedisModule_Reply_SimpleString(reply, QueryError_Strerror(QUERY_ERROR_CODE_TIMED_OUT));
@@ -655,6 +660,9 @@ done_3:
 
     // <error>
     _replyWarnings(req, reply, rc);
+
+    // Assert that timeout only occurs when skipTimeoutChecks is false
+    RS_ASSERT(!(rc == RS_RESULT_TIMEDOUT)  || !req->skipTimeoutChecks);
 
     cursor_done = (rc != RS_RESULT_OK
                    && !(rc == RS_RESULT_TIMEDOUT
