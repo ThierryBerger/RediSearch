@@ -2,7 +2,7 @@ from RLTest import Env
 from includes import *
 from common import *
 
-not_modifiable = 'Not modifiable at runtime'
+not_modifiable = 'SEARCH_OPTION_BAD: Not modifiable at runtime'
 default_module_list = [['name', 'vectorset', 'ver', 1, 'path', '', 'args', []]]
 
 def _test_config_str(arg_name, arg_value, ret_value=None):
@@ -98,24 +98,24 @@ def testGetConfigOptions(env):
 
 @skip(cluster=True)
 def testSetConfigOptions(env):
-    env.expect(config_cmd(), 'set', 'MINPREFIX', 'str').equal('Could not convert argument to expected type')
-    env.expect(config_cmd(), 'set', 'EXTLOAD', 1).error().contains('Not modifiable at runtime')
-    env.expect(config_cmd(), 'set', 'NOGC', 1).error().contains('Not modifiable at runtime')
+    env.expect(config_cmd(), 'set', 'MINPREFIX', 'str').error().contains('SEARCH_PARSE_ARGS: Could not convert argument to expected type')
+    env.expect(config_cmd(), 'set', 'EXTLOAD', 1).error().contains(not_modifiable)
+    env.expect(config_cmd(), 'set', 'NOGC', 1).error().contains(not_modifiable)
     env.expect(config_cmd(), 'set', 'MINPREFIX', 1).equal('OK')
     env.expect(config_cmd(), 'set', 'FORKGC_SLEEP_BEFORE_EXIT', 1).equal('OK')
-    env.expect(config_cmd(), 'set', 'MAXDOCTABLESIZE', 1).error().contains('Not modifiable at runtime')
+    env.expect(config_cmd(), 'set', 'MAXDOCTABLESIZE', 1).error().contains(not_modifiable)
     env.expect(config_cmd(), 'set', 'MAXEXPANSIONS', 1).equal('OK')
     env.expect(config_cmd(), 'set', 'TIMEOUT', 1).equal('OK')
     env.expect(config_cmd(), 'set', 'WORKERS', 1).equal('OK')
     env.expect(config_cmd(), 'set', 'MIN_OPERATION_WORKERS', 1).equal('OK')
     env.expect(config_cmd(), 'set', 'DEFAULT_SCORER', 'BM25STD').equal('OK')
-    env.expect(config_cmd(), 'set', 'WORKER_THREADS', 1).error().contains('Not modifiable at runtime') # deprecated
-    env.expect(config_cmd(), 'set', 'MT_MODE', 1).error().contains('Not modifiable at runtime') # deprecated
-    env.expect(config_cmd(), 'set', 'FRISOINI', 1).error().contains('Not modifiable at runtime')
+    env.expect(config_cmd(), 'set', 'WORKER_THREADS', 1).error().contains(not_modifiable) # deprecated
+    env.expect(config_cmd(), 'set', 'MT_MODE', 1).error().contains(not_modifiable) # deprecated
+    env.expect(config_cmd(), 'set', 'FRISOINI', 1).error().contains(not_modifiable)
     env.expect(config_cmd(), 'set', 'ON_TIMEOUT', 1).error().contains('Invalid ON_TIMEOUT value')
     env.expect(config_cmd(), 'set', 'GCSCANSIZE', 1).equal('OK')
     env.expect(config_cmd(), 'set', 'MIN_PHONETIC_TERM_LEN', 1).equal('OK')
-    env.expect(config_cmd(), 'set', 'GC_POLICY', 1).error().contains('Not modifiable at runtime')
+    env.expect(config_cmd(), 'set', 'GC_POLICY', 1).error().contains(not_modifiable)
     env.expect(config_cmd(), 'set', 'FORK_GC_RUN_INTERVAL', 1).equal('OK')
     env.expect(config_cmd(), 'set', 'FORK_GC_CLEAN_THRESHOLD', 1).equal('OK')
     env.expect(config_cmd(), 'set', 'FORK_GC_RETRY_INTERVAL', 1).equal('OK')
@@ -130,10 +130,10 @@ def testSetConfigOptions(env):
 @skip(cluster=True)
 def testSetConfigOptionsErrors(env):
     env.expect(config_cmd(), 'set', 'MAXDOCTABLESIZE', 'str').error().contains('Not modifiable at runtime')
-    env.expect(config_cmd(), 'set', 'MAXEXPANSIONS', 'str').equal('Could not convert argument to expected type')
-    env.expect(config_cmd(), 'set', 'TIMEOUT', 'str').equal('Could not convert argument to expected type')
-    env.expect(config_cmd(), 'set', 'FORKGC_SLEEP_BEFORE_EXIT', 'str').equal('Could not convert argument to expected type')
-    env.expect(config_cmd(), 'set', 'FORKGC_SLEEP_BEFORE_EXIT', 'str').equal('Could not convert argument to expected type')
+    env.expect(config_cmd(), 'set', 'MAXEXPANSIONS', 'str').error().contains('SEARCH_PARSE_ARGS: Could not convert argument to expected type')
+    env.expect(config_cmd(), 'set', 'TIMEOUT', 'str').error().contains('SEARCH_PARSE_ARGS: Could not convert argument to expected type')
+    env.expect(config_cmd(), 'set', 'FORKGC_SLEEP_BEFORE_EXIT', 'str').error().contains('SEARCH_PARSE_ARGS: Could not convert argument to expected type')
+    env.expect(config_cmd(), 'set', 'FORKGC_SLEEP_BEFORE_EXIT', 'str').error().contains('SEARCH_PARSE_ARGS: Could not convert argument to expected type')
     env.expect(config_cmd(), 'set', 'WORKERS',  2 ** 13 + 1).contains('Number of worker threads cannot exceed')
     env.expect(config_cmd(), 'set', 'MIN_OPERATION_WORKERS', 2 ** 13 + 1).contains('Number of worker threads cannot exceed')
     env.expect(config_cmd(), 'set', 'INDEX_CURSOR_LIMIT', -1).contains('Value is outside acceptable bounds')
@@ -145,13 +145,13 @@ def testSetConfigOptionsErrors(env):
     env.expect(config_cmd(), 'set', '_BG_INDEX_OOM_PAUSE_TIME', UINT32_MAX+1).contains('Value is outside acceptable bounds')
     env.expect(config_cmd(), 'set', 'INDEXER_YIELD_EVERY_OPS', -1).contains('Value is outside acceptable bounds')
     # Test _MIN_TRIM_DELAY_MS validation
-    env.expect(config_cmd(), 'set', '_MIN_TRIM_DELAY_MS', 'str').equal('Could not convert argument to expected type')
+    env.expect(config_cmd(), 'set', '_MIN_TRIM_DELAY_MS', 'str').error().contains('SEARCH_PARSE_ARGS: Could not convert argument to expected type')
     env.expect(config_cmd(), 'set', '_MIN_TRIM_DELAY_MS', -1).contains('Value is outside acceptable bounds')
     # Test _MAX_TRIM_DELAY_MS validation
-    env.expect(config_cmd(), 'set', '_MAX_TRIM_DELAY_MS', 'str').equal('Could not convert argument to expected type')
+    env.expect(config_cmd(), 'set', '_MAX_TRIM_DELAY_MS', 'str').error().contains('SEARCH_PARSE_ARGS: Could not convert argument to expected type')
     env.expect(config_cmd(), 'set', '_MAX_TRIM_DELAY_MS', -1).contains('Value is outside acceptable bounds')
     # Test _TRIMMING_STATE_CHECK_DELAY_MS validation
-    env.expect(config_cmd(), 'set', '_TRIMMING_STATE_CHECK_DELAY_MS', 'str').equal('Could not convert argument to expected type')
+    env.expect(config_cmd(), 'set', '_TRIMMING_STATE_CHECK_DELAY_MS', 'str').error().contains('SEARCH_PARSE_ARGS: Could not convert argument to expected type')
     env.expect(config_cmd(), 'set', '_TRIMMING_STATE_CHECK_DELAY_MS', -1).contains('Value is outside acceptable bounds')
 
 @skip(cluster=True)

@@ -1757,7 +1757,7 @@ int RSConfig_SetOption(RSConfig *config, RSConfigOptions *options, const char *n
     return REDISMODULE_ERR;
   }
   if (var->flags & RSCONFIGVAR_F_IMMUTABLE) {
-    QueryError_SetError(status, QUERY_ERROR_CODE_INVAL, "Not modifiable at runtime");
+    QueryError_SetWithUserDataFmt(status, QUERY_ERROR_CODE_BAD_OPTION, "Not modifiable at runtime", "");
     return REDISMODULE_ERR;
   }
   ArgsCursor ac;
