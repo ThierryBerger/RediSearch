@@ -31,7 +31,8 @@ static void FreeCursorNode(RedisModuleCtx* ctx, void *node) {
 RedisModuleBlockedClient *BlockQueryClient(RedisModuleCtx *ctx, StrongRef spec_ref, AREQ* req, int timeoutMS) {
   BlockedQueries *blockedQueries = MainThread_GetBlockedQueries();
   RS_LOG_ASSERT(blockedQueries, "MainThread_InitBlockedQueries was not called, or function not called from main thread");
-  BlockedQueryNode *node = BlockedQueries_AddQuery(blockedQueries, spec_ref, &req->ast);
+  // AREQ ownership: blockedClientReqCtx owns AREQ and frees it before calling UnblockClient.
+  BlockedQueryNode *node = BlockedQueries_AddQuery(blockedQueries, spec_ref, &req->ast, req);
 
   // Prepare context for the worker thread
   // Since we are still in the main thread, and we already validated the
