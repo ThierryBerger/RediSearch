@@ -501,11 +501,11 @@ void SetSearchCtx(RedisSearchCtx *sctx, const AREQ *req);
 // Allows calling parseProfileArgs from reply_empty.c
 int parseProfileArgs(RedisModuleString **argv, int argc, AREQ *r);
 
-inline bool AREQ_ShouldCheckTimeout(AREQ *req) {
+static inline bool AREQ_ShouldCheckTimeout(AREQ *req) {
   return !req->skipTimeoutChecks;
 }
 
-inline void AREQ_SetSkipTimeoutChecks(AREQ *req, bool skipTimeoutChecks) {
+static inline void AREQ_SetSkipTimeoutChecks(AREQ *req, bool skipTimeoutChecks) {
   req->skipTimeoutChecks = skipTimeoutChecks;
   // Also propagate to the SearchCtx's SearchTime for timeout functions that access it directly
   if (req->sctx) {

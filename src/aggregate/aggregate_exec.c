@@ -1150,11 +1150,13 @@ static int buildPipelineAndExecute(AREQ *r, RedisModuleCtx *ctx, QueryError *sta
     // Determine timeout callback based on policy
     BlockedClientTimeoutCB timeoutCB = NULL;
     int timeoutMS = 0;
+    if (r->reqConfig.queryTimeoutMS == 0 || r->reqConfig.timeoutPolicy != TimeoutPolicy_Return) {
+      AREQ_SetSkipTimeoutChecks(r, true);
+    }
     if (r->reqConfig.timeoutPolicy == TimeoutPolicy_Fail) {
       timeoutCB = QueryTimeoutFailCallback;
       timeoutMS = r->reqConfig.queryTimeoutMS;
       // Skip timeout checks in background thread since we rely on the callback to signal timeout
-      AREQ_SetSkipTimeoutChecks(r, true);
     }
 
     RedisModuleBlockedClient* blockedClient = BlockQueryClientWithTimeout(ctx, spec_ref, r, timeoutMS, timeoutCB);
