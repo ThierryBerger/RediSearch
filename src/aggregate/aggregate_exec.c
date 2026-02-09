@@ -331,6 +331,7 @@ static void startPipeline(AREQ *req, ResultProcessor *rp, SearchResult ***result
     .timeoutPolicy = req->reqConfig.timeoutPolicy,
     .timeout = &req->sctx->time.timeout,
     .oomPolicy = req->reqConfig.oomPolicy,
+    .skipTimeoutChecks = req->sctx->time.skipTimeoutChecks,
   };
   startPipelineCommon(&ctx, rp, results, r, rc);
 
@@ -1148,6 +1149,8 @@ static int buildPipelineAndExecute(AREQ *r, RedisModuleCtx *ctx, QueryError *sta
     if (r->reqConfig.timeoutPolicy == TimeoutPolicy_Fail) {
       timeoutCB = QueryTimeoutFailCallback;
       timeoutMS = r->reqConfig.queryTimeoutMS;
+      // Skip timeout checks in background thread since we rely on the callback to signal timeout
+      AREQ_SetSkipTimeoutChecks(r, true);
     }
 
     RedisModuleBlockedClient* blockedClient = BlockQueryClientWithTimeout(ctx, spec_ref, r, timeoutMS, timeoutCB);

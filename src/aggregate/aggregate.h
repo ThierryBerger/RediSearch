@@ -293,6 +293,8 @@ typedef struct AREQ {
   atomic_flag timedOut;
   // Reply ownership flag for Run in Threads mode (coordinates reply between main and background thread)
   atomic_flag replying;
+  // Flag to indicate whether to check for timeout using clock checks
+  bool skipTimeoutChecks;
 } AREQ;
 
 /**
@@ -498,6 +500,18 @@ void SetSearchCtx(RedisSearchCtx *sctx, const AREQ *req);
 // From dist_aggregate.c
 // Allows calling parseProfileArgs from reply_empty.c
 int parseProfileArgs(RedisModuleString **argv, int argc, AREQ *r);
+
+inline bool AREQ_ShouldCheckTimeout(AREQ *req) {
+  return !req->skipTimeoutChecks;
+}
+
+inline void AREQ_SetSkipTimeoutChecks(AREQ *req, bool skipTimeoutChecks) {
+  req->skipTimeoutChecks = skipTimeoutChecks;
+  // Also propagate to the SearchCtx's SearchTime for timeout functions that access it directly
+  if (req->sctx) {
+    req->sctx->time.skipTimeoutChecks = skipTimeoutChecks;
+  }
+}
 
 #define AREQ_RP(req) AREQ_QueryProcessingCtx(req)->endProc
 
