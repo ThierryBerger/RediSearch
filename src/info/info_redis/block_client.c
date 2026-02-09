@@ -28,7 +28,8 @@ static void FreeCursorNode(RedisModuleCtx* ctx, void *node) {
   rm_free(cursorNode);
 }
 
-RedisModuleBlockedClient *BlockQueryClient(RedisModuleCtx *ctx, StrongRef spec_ref, AREQ* req, int timeoutMS) {
+RedisModuleBlockedClient *BlockQueryClientWithTimeout(RedisModuleCtx *ctx, StrongRef spec_ref, AREQ* req,
+                                                       int timeoutMS, RedisModuleCmdFunc timeoutCallback) {
   BlockedQueries *blockedQueries = MainThread_GetBlockedQueries();
   RS_LOG_ASSERT(blockedQueries, "MainThread_InitBlockedQueries was not called, or function not called from main thread");
   // AREQ ownership: blockedClientReqCtx owns AREQ and frees it before calling UnblockClient.
@@ -38,7 +39,7 @@ RedisModuleBlockedClient *BlockQueryClient(RedisModuleCtx *ctx, StrongRef spec_r
   // Since we are still in the main thread, and we already validated the
   // spec's existence, it is safe to directly get the strong reference from the spec
   // found in buildRequest.
-  RedisModuleBlockedClient *blockedClient = RedisModule_BlockClient(ctx, NULL, NULL, FreeQueryNode, 0);
+  RedisModuleBlockedClient *blockedClient = RedisModule_BlockClient(ctx, NULL, timeoutCallback, FreeQueryNode, timeoutMS);
   RedisModule_BlockClientSetPrivateData(blockedClient, node);
   // report block client start time
   RedisModule_BlockedClientMeasureTimeStart(blockedClient);
