@@ -780,18 +780,42 @@ class TestQueryDebugCommands(object):
         self.env.assertTrue(len(res_values) == len(set(res_values)), depth=depth+1, message="QueryWithSorter: expected unique results")
 
     ######################## Main tests ########################
-    def StrictPolicy(self):
+    def TimeoutPolicyConstraints(self):
+        """
+        Test TIMEOUT_AFTER_N policy constraints for shard-level queries:
+        - ON_TIMEOUT RETURN: always supported
+        - ON_TIMEOUT FAIL: only supported without workers (WORKERS=0)
+        - ON_TIMEOUT RETURN-STRICT: never supported
+        """
         env = self.env
-        env.expect(config_cmd(), 'SET', 'ON_TIMEOUT', 'FAIL').ok()
-        if env.shardsCount > 1:
-            err_msg = "Timeout limit was reached"
-        else:
-            err_msg = "TIMEOUT_AFTER_N is only supported with ON_TIMEOUT RETURN"
+        conn = getConnectionByEnv(env)
 
-        with env.assertResponseError(contained="TIMEOUT_AFTER_N is only supported with ON_TIMEOUT RETURN"):
+        # Skip for cluster - these constraints only apply to shard-level queries
+        if env.isCluster():
+            return
+
+        # Get current workers count to determine expected behavior
+        workers = int(conn.execute_command(config_cmd(), 'GET', 'WORKERS')[1])
+
+        # Test ON_TIMEOUT FAIL
+        env.expect(config_cmd(), 'SET', 'ON_TIMEOUT', 'FAIL').ok()
+
+        if workers > 0:
+            # With workers, ON_TIMEOUT FAIL is not supported with TIMEOUT_AFTER_N
+            with env.assertResponseError(contained="TIMEOUT_AFTER_N is not supported with ON_TIMEOUT FAIL"):
+                runDebugQueryCommandTimeoutAfterN(env, self.basic_query, 2)
+        else:
+            # Without workers, ON_TIMEOUT FAIL should work with TIMEOUT_AFTER_N
+            # The query should succeed and return a timeout error (not a parse error)
+            with env.assertResponseError(contained="Timeout limit was reached"):
+                runDebugQueryCommandTimeoutAfterN(env, self.basic_query, 2)
+
+        # Test ON_TIMEOUT RETURN-STRICT (never supported)
+        env.expect(config_cmd(), 'SET', 'ON_TIMEOUT', 'RETURN-STRICT').ok()
+        with env.assertResponseError(contained="TIMEOUT_AFTER_N is not supported with ON_TIMEOUT RETURN-STRICT"):
             runDebugQueryCommandTimeoutAfterN(env, self.basic_query, 2)
 
-        # restore the default policy
+        # Restore the default policy
         env.expect(config_cmd(), 'SET', 'ON_TIMEOUT', 'RETURN').ok()
 
     def SearchDebug(self):
@@ -813,7 +837,7 @@ class TestQueryDebugCommands(object):
         # with no sorter (dialect 4)
         self.QueryWithLimit(basic_debug_query + ["DIALECT", 4], timeout_res_count, limit, expected_res_count=expected_results_count, should_timeout=True, message="SearchDebug:")
 
-        self.StrictPolicy()
+        self.TimeoutPolicyConstraints()
 
     def testSearchDebug(self):
         self.SearchDebug()
@@ -885,7 +909,7 @@ class TestQueryDebugCommands(object):
             res = env.cmd(*basic_debug_query, *debug_params)
             self.verifyResultsResp3(res, 0, message="AggregateDebug: TIMEOUT_AFTER_N 0 INTERNAL_ONLY without WITHCURSOR in cluster:")
 
-        self.StrictPolicy()
+        self.TimeoutPolicyConstraints()
 
     def testAggregateDebug(self):
         self.AggregateDebug()
