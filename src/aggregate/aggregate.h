@@ -13,8 +13,14 @@
 #ifdef __cplusplus
 #include <atomic>
 using atomic_flag = std::atomic_flag;
+using atomic_bool = std::atomic<bool>;
+#define ATOMIC_LOAD(ptr) (ptr)->load()
+#define ATOMIC_STORE(ptr, val) (ptr)->store(val)
 #else
 #include <stdatomic.h>
+typedef _Atomic(bool) atomic_bool;
+#define ATOMIC_LOAD(ptr) atomic_load(ptr)
+#define ATOMIC_STORE(ptr, val) atomic_store(ptr, val)
 #endif
 #include "value.h"
 #include "query.h"
@@ -290,7 +296,7 @@ typedef struct AREQ {
   ProfilePrinterCtx profileCtx;
 
   // Timeout signaling flag for Run in Threads mode (set by timeout callback on main thread)
-  atomic_flag timedOut;
+  atomic_bool timedOut;
   // Reply ownership flag for Run in Threads mode (coordinates reply between main and background thread)
   atomic_flag replying;
   // Flag to indicate whether to check for timeout using clock checks
@@ -500,6 +506,14 @@ void SetSearchCtx(RedisSearchCtx *sctx, const AREQ *req);
 // From dist_aggregate.c
 // Allows calling parseProfileArgs from reply_empty.c
 int parseProfileArgs(RedisModuleString **argv, int argc, AREQ *r);
+
+static inline bool AREQ_TimedOut(AREQ *req) {
+  return ATOMIC_LOAD(&req->timedOut);
+}
+
+static inline void AREQ_SetTimedOut(AREQ *req) {
+  ATOMIC_STORE(&req->timedOut, true);
+}
 
 static inline bool AREQ_ShouldCheckTimeout(AREQ *req) {
   return !req->skipTimeoutChecks;
