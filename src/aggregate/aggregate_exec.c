@@ -413,7 +413,7 @@ static void sendChunk_Resp2(AREQ *req, RedisModule_Reply *reply, size_t limit,
 
     startPipeline(req, rp, &results, &r, &rc);
 
-    if (atomic_flag_test_and_set(&req->replying)) {
+    if (__atomic_exchange_n(&req->replying, true, __ATOMIC_ACQ_REL)) {
       // Timeout callback owns reply - skip to cleanup without replying
       cursor_done = true;
       goto done_2_err;
@@ -606,7 +606,7 @@ static void sendChunk_Resp3(AREQ *req, RedisModule_Reply *reply, size_t limit,
 
     startPipeline(req, rp, &results, &r, &rc);
 
-    if (atomic_flag_test_and_set(&req->replying)) {
+    if (__atomic_exchange_n(&req->replying, true, __ATOMIC_ACQ_REL)) {
       // Timeout callback owns reply - skip to cleanup without replying
       cursor_done = true;
       goto done_3_err;
@@ -928,10 +928,10 @@ void AREQ_Execute_Callback(blockedClientReqCtx *BCRctx) {
   if (!StrongRef_Get(execution_ref)) {
     // The index was dropped while the query was in the job queue.
     // Try to claim reply ownership before replying
-    if (!atomic_flag_test_and_set(&req->replying)) {
+    if (!__atomic_exchange_n(&req->replying, true, __ATOMIC_ACQ_REL)) {
       QueryError_SetCode(&status, QUERY_ERROR_CODE_DROPPED_BACKGROUND);
       QueryError_ReplyAndClear(outctx, &status);
-      atomic_flag_clear(&req->replying);
+      __atomic_store_n(&req->replying, false, __ATOMIC_RELEASE);
     }
     // If we didn't claim it, timeout callback will reply
     RedisModule_FreeThreadSafeContext(outctx);
@@ -971,9 +971,9 @@ void AREQ_Execute_Callback(blockedClientReqCtx *BCRctx) {
 
 error:
   // Try to claim reply ownership before replying with error
-  if (!atomic_flag_test_and_set(&req->replying)) {
+  if (!__atomic_exchange_n(&req->replying, true, __ATOMIC_ACQ_REL)) {
     QueryError_ReplyAndClear(outctx, &status);
-    atomic_flag_clear(&req->replying);
+    __atomic_store_n(&req->replying, false, __ATOMIC_RELEASE);
   } else {
     // Timeout callback owns reply - just clear the error
     QueryError_ClearError(&status);
@@ -1145,17 +1145,17 @@ static int QueryTimeoutFailCallback(RedisModuleCtx *ctx, RedisModuleString **arg
   AREQ_SetTimedOut(req);
 
   // Try to claim reply ownership
-  if (!atomic_flag_test_and_set(&req->replying)) {
+  if (!__atomic_exchange_n(&req->replying, true, __ATOMIC_ACQ_REL)) {
     // We claimed it - reply with timeout error
     QueryErrorsGlobalStats_UpdateError(QUERY_ERROR_CODE_TIMED_OUT, 1, true);
     RedisModule_ReplyWithError(ctx, QueryError_Strerror(QUERY_ERROR_CODE_TIMED_OUT));
-    atomic_flag_clear(&req->replying);
+    __atomic_store_n(&req->replying, false, __ATOMIC_RELEASE);
   } else {
     // Background thread is replying - wait for it to finish
-    while (atomic_flag_test_and_set(&req->replying)) {
+    while (__atomic_exchange_n(&req->replying, true, __ATOMIC_ACQ_REL)) {
       // Busy wait until background thread clears the flag
     }
-    atomic_flag_clear(&req->replying);
+    __atomic_store_n(&req->replying, false, __ATOMIC_RELEASE);
     // Don't reply - background thread already did
   }
 
