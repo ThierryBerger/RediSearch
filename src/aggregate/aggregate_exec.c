@@ -536,6 +536,9 @@ done_2:
       RedisModule_Reply_ArrayEnd(reply);
     }
 
+    // Release reply ownership after successful reply
+    __atomic_store_n(&req->replying, false, __ATOMIC_RELEASE);
+
 done_2_err:
     finishSendChunk(req, results, &r, cursor_done);
 
@@ -716,6 +719,9 @@ done_3:
       }
       RedisModule_Reply_ArrayEnd(reply);
     }
+
+    // Release reply ownership after successful reply
+    __atomic_store_n(&req->replying, false, __ATOMIC_RELEASE);
 
 done_3_err:
     finishSendChunk(req, results, &r, cursor_done);
